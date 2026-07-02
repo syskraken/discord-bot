@@ -1,0 +1,19 @@
+{
+  "_comment": "Copy this file to config.json and fill in your real values. Do NOT commit config.json with a real token to git/public repos.",
+
+  "token": "",
+
+  "command_prefix": "!",
+
+  "welcome_channel_name": "welcome",
+
+  "general_channel_names": ["general"],
+
+  "support_channel_name": "clash-of-clans-support",
+
+  "redirect_cooldown_seconds": 15,
+
+  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in #general may not receive support.",
+
+   "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out #rules to get started."
+}
