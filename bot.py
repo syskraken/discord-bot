@@ -172,6 +172,7 @@ async def ping(ctx):
 
 web_app = FastAPI(title="Sharky Health Check")
 
+@web_app.head("/health")
 @web_app.get("/health")
 def health_check():
     """Endpoint for Render health checks and UptimeRobot pings."""
