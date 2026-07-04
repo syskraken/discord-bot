@@ -13,7 +13,7 @@
 
   "redirect_cooldown_seconds": 15,
 
-  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in {general_channel} may not receive support.",
+  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in #general may not receive support.",
 
-   "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out {rules_channel} to get started."
+   "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out #rules to get started."
 }
