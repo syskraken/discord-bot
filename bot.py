@@ -148,8 +148,16 @@ async def on_member_join(member: discord.Member):
         rules_channel=channel_mention(guild, RULES_CHANNEL_NAME),
     )
 
+    # Build an embed so we can show the new member's profile picture.
+    embed = discord.Embed(description=message, color=discord.Color.blue())
+    embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.set_footer(text=f"Member #{guild.member_count}")
+
     try:
-        await welcome_channel.send(message)
+        # Mention in content so the new member actually gets pinged
+        # (mentions inside an embed do not trigger a notification).
+        await welcome_channel.send(content=member.mention, embed=embed)
         log.info("Welcomed %s in #%s", member, welcome_channel.name)
     except discord.Forbidden:
         log.error(
