@@ -3,7 +3,10 @@ Sharky - Discord Bot for The Trench
 Features:
   1. Greets new members by posting in a #welcome channel
   2. Detects questions posted in #general and redirects the asker to the
-     correct support channel (e.g. #clash-of-clans-support)
+     correct support channel (e.g. #clash-of-clans-support) - this always
+     triggers, whether the owner is online or not
+  3. In every other channel, detects questions and - only when the owner
+     (Poseidon) is offline - tells the asker to post in #ask-poseidon
 
 Setup:
   1. pip install -r requirements.txt
@@ -42,14 +45,23 @@ TOKEN = os.environ.get("DISCORD_BOT_TOKEN") or config.get("token")
 WELCOME_CHANNEL_NAME = config["welcome_channel_name"]
 GENERAL_CHANNEL_NAMES = set(config["general_channel_names"])
 SUPPORT_CHANNEL_NAME = config["support_channel_name"]
+RULES_CHANNEL_NAME = config.get("rules_channel_name", "rules")
 WELCOME_MESSAGE_TEMPLATE = config["welcome_message_template"]
 REDIRECT_MESSAGE_TEMPLATE = config["redirect_message_template"]
 COMMAND_PREFIX = config.get("command_prefix", "!")
 REDIRECT_COOLDOWN_SECONDS = config.get("redirect_cooldown_seconds", 15)
+OWNER_ID = int(config.get("owner_id") or 0)
+ASK_POSEIDON_CHANNEL_NAME = config.get("ask_poseidon_channel_name", "ask-poseidon")
+OFFLINE_REDIRECT_MESSAGE_TEMPLATE = config.get(
+    "offline_redirect_message_template",
+    "{user} Poseidon is not online right now. Please post your question in "
+    "{ask_poseidon_channel} and Poseidon will answer as soon as they are back.",
+)
 
 intents = discord.Intents.default()
 intents.members = True          # required to receive on_member_join
 intents.message_content = True  # required to read message text for question detection
+intents.presences = True        # required to see whether the owner is online
 
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
@@ -76,6 +88,31 @@ def is_question(message_content: str) -> bool:
         "anyone know", "anybody know", "not working ", "error ", 
     )
     return text.startswith(question_starters)
+
+
+def channel_mention(guild: discord.Guild, name: str) -> str:
+    """
+    Return a clickable channel mention (e.g. <#123>) for the channel with the
+    given name, falling back to a plain "#name" if no such channel exists.
+    """
+    channel = discord.utils.find(lambda c: c.name == name, guild.text_channels)
+    return channel.mention if channel else f"#{name}"
+
+
+def owner_is_online(guild: discord.Guild) -> bool:
+    """
+    Check whether the configured owner (Poseidon) appears online in this guild.
+    Counts online/idle/dnd as online; offline and invisible count as offline.
+    Requires the Presence Intent to be enabled in the Discord Developer Portal,
+    otherwise every member always appears offline.
+    """
+    if not OWNER_ID:
+        log.warning("owner_id is not set in config.json - treating owner as offline")
+        return False
+    member = guild.get_member(OWNER_ID)
+    if member is None:
+        return False
+    return member.status != discord.Status.offline
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +145,7 @@ async def on_member_join(member: discord.Member):
         member_name=member.display_name,
         server=guild.name,
         member_count=guild.member_count,
+        rules_channel=channel_mention(guild, RULES_CHANNEL_NAME),
     )
 
     try:
@@ -129,34 +167,69 @@ async def on_message(message: discord.Message):
     # Let command processing still work (e.g. !ping below)
     await bot.process_commands(message)
 
-    # Only redirect in configured "general" channels
-    if message.channel.name not in GENERAL_CHANNEL_NAMES:
+    if message.guild is None or not is_question(message.content):
         return
 
-    if not is_question(message.content):
+    # --- #general: always redirect questions to the support channel, ---
+    # --- whether the owner is online or not                          ---
+    if message.channel.name in GENERAL_CHANNEL_NAMES:
+        # Per-user cooldown so we don't pile on if someone sends several
+        # question-shaped messages in a row
+        now = time.time()
+        last = _last_redirect_at.get(message.author.id, 0)
+        if now - last < REDIRECT_COOLDOWN_SECONDS:
+            return
+        _last_redirect_at[message.author.id] = now
+
+        support_channel = discord.utils.find(
+            lambda c: c.name == SUPPORT_CHANNEL_NAME, message.guild.text_channels
+        )
+        support_mention = support_channel.mention if support_channel else f"#{SUPPORT_CHANNEL_NAME}"
+
+        reply_text = REDIRECT_MESSAGE_TEMPLATE.format(
+            user=message.author.mention,
+            support_channel=support_mention,
+            general_channel=message.channel.mention,
+        )
+
+        try:
+            await message.reply(reply_text, mention_author=False)
+            log.info("Redirected %s to #%s", message.author, SUPPORT_CHANNEL_NAME)
+        except discord.Forbidden:
+            log.error("Missing permission to send messages in #%s", message.channel.name)
         return
 
-    # Per-user cooldown so we don't pile on if someone sends several
-    # question-shaped messages in a row
+    # --- Every other channel: if the owner is offline, point the asker ---
+    # --- to #ask-poseidon (no point telling them to ask there if they  ---
+    # --- already are)                                                  ---
+    if message.channel.name == ASK_POSEIDON_CHANNEL_NAME:
+        return
+
+    if owner_is_online(message.guild):
+        return
+
     now = time.time()
     last = _last_redirect_at.get(message.author.id, 0)
     if now - last < REDIRECT_COOLDOWN_SECONDS:
         return
     _last_redirect_at[message.author.id] = now
 
-    support_channel = discord.utils.find(
-        lambda c: c.name == SUPPORT_CHANNEL_NAME, message.guild.text_channels
+    ask_channel = discord.utils.find(
+        lambda c: c.name == ASK_POSEIDON_CHANNEL_NAME, message.guild.text_channels
     )
-    support_mention = support_channel.mention if support_channel else f"#{SUPPORT_CHANNEL_NAME}"
+    ask_mention = ask_channel.mention if ask_channel else f"#{ASK_POSEIDON_CHANNEL_NAME}"
 
-    reply_text = REDIRECT_MESSAGE_TEMPLATE.format(
+    reply_text = OFFLINE_REDIRECT_MESSAGE_TEMPLATE.format(
         user=message.author.mention,
-        support_channel=support_mention,
+        ask_poseidon_channel=ask_mention,
     )
 
     try:
         await message.reply(reply_text, mention_author=False)
-        log.info("Redirected %s to #%s", message.author, SUPPORT_CHANNEL_NAME)
+        log.info(
+            "Owner offline - pointed %s to #%s from #%s",
+            message.author, ASK_POSEIDON_CHANNEL_NAME, message.channel.name,
+        )
     except discord.Forbidden:
         log.error("Missing permission to send messages in #%s", message.channel.name)
 

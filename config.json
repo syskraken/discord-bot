@@ -11,9 +11,17 @@
 
   "support_channel_name": "clash-of-clans-support",
 
+  "rules_channel_name": "rules",
+
+  "owner_id": "1475487861087404084",
+
+  "ask_poseidon_channel_name": "ask-poseidon",
+
+  "offline_redirect_message_template": "{user} Please post your question in {ask_poseidon_channel} using the /ask command, or mention Poseidon directly with @",
+
   "redirect_cooldown_seconds": 15,
 
-  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in #general may not receive support.",
+  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in {general_channel} may not receive support.",
 
-   "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out #rules to get started."
+   "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out {rules_channel} to get started."
 }
