@@ -57,6 +57,29 @@ OFFLINE_REDIRECT_MESSAGE_TEMPLATE = config.get(
     "{user} Poseidon is not online right now. Please post your question in "
     "{ask_poseidon_channel} and Poseidon will answer as soon as they are back.",
 )
+# Keywords that mean a question is about the KrakenPrime CoC farming bot
+BOT_QUESTION_KEYWORDS = [
+    k.lower() for k in config.get(
+        "bot_question_keywords",
+        [
+            "krakenprime", "kraken prime", "kraken bot", "kraken",
+            "farming bot", "farm bot", "auto farm", "autofarm",
+            "coc bot", "clash bot", "the bot",
+        ],
+    )
+]
+# Keywords that mean the user is describing a problem/issue
+ISSUE_KEYWORDS = [
+    k.lower() for k in config.get(
+        "issue_keywords",
+        [
+            "not working", "doesn't work", "dont work", "doesnt work",
+            "won't", "wont ", "error", "crash", "stuck", "broken",
+            "problem", "issue", "fail", "bug", "can't", "cant ",
+            "help me", "need help",
+        ],
+    )
+]
 
 intents = discord.Intents.default()
 intents.members = True          # required to receive on_member_join
@@ -88,6 +111,24 @@ def is_question(message_content: str) -> bool:
         "anyone know", "anybody know", "not working ", "error ", 
     )
     return text.startswith(question_starters)
+
+
+def is_about_krakenprime(message_content: str) -> bool:
+    """
+    Detect whether a message is talking about the KrakenPrime CoC farming bot,
+    based on the configured keyword list.
+    """
+    text = message_content.lower()
+    return any(keyword in text for keyword in BOT_QUESTION_KEYWORDS)
+
+
+def mentions_issue(message_content: str) -> bool:
+    """
+    Detect whether a message sounds like the user is experiencing a problem
+    (errors, crashes, something not working), based on the configured list.
+    """
+    text = message_content.lower()
+    return any(keyword in text for keyword in ISSUE_KEYWORDS)
 
 
 def channel_mention(guild: discord.Guild, name: str) -> str:
@@ -176,6 +217,11 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
     if message.guild is None or not is_question(message.content):
+        return
+
+    # Only act on questions about the KrakenPrime bot or users reporting
+    # an issue - other chatter is left alone (applies to all channels).
+    if not (is_about_krakenprime(message.content) or mentions_issue(message.content)):
         return
 
     # --- #general: always redirect questions to the support channel, ---

@@ -19,9 +19,13 @@
 
   "offline_redirect_message_template": "{user} Please post your question in {ask_poseidon_channel} using the /ask command, or mention Poseidon directly with @",
 
+  "bot_question_keywords": ["krakenprime", "kraken prime", "kraken bot", "kraken", "farming bot", "farm bot", "auto farm", "autofarm", "coc bot", "clash bot", "the bot"],
+
+  "issue_keywords": ["not working", "doesn't work", "dont work", "doesnt work", "won't", "wont ", "error", "crash", "stuck", "broken", "problem", "issue", "fail", "bug", "can't", "cant ", "help me", "need help", "not deploying", "can I use farming bot in"],
+
   "redirect_cooldown_seconds": 15,
 
-  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so the Mighty Kraken can help you. Messages in {general_channel} may not receive support.",
+  "redirect_message_template": "{user} It looks like you have a question. Please ask it in {support_channel} so Kraken can help you. Messages in {general_channel} may not receive support.",
 
    "welcome_message_template": "{user} just joined {server}! 🎉 Welcome aboard — check out {rules_channel} to get started."
 }
